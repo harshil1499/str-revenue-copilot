@@ -1,0 +1,19 @@
+# Real configuration — listing IDs, price thresholds, notification addresses.
+# Use config.example.py as the template.
+config.py
+
+# Operational data & secrets: the intervention log, credentials, generated output.
+private/
+.env
+.env.*
+*.env
+
+# Working notes with property-identifying detail — kept local, not published.
+NOTES.md
+CLAUDE.md
+
+# Python / macOS
+__pycache__/
+*.pyc
+.venv/
+.DS_Store
