@@ -75,63 +75,80 @@ over-concluding.
 
 ---
 
-## Decision 5 — Give weekends a safety net, but refuse to automate their pricing
+## Decision 5 — Scope discipline: the gap was visibility, not automation
 
-**Context.** The optimizer only priced Mon–Thu. Fri/Sat — the highest-value inventory — had no
-automated coverage at all. The obvious move was to extend the same force-clear logic to weekends.
+**The ask.** Weekends were uncovered. The system priced Mon–Thu only, leaving Fri/Sat — the
+highest-value inventory — with no automated coverage. The obvious roadmap item was "extend
+pricing to weekends."
 
-**What I did instead.** I checked whether weekends actually needed discounting, and they didn't:
-they largely sell themselves at the pricing engine's own rates. Auto-discounting them would have
-left money on nights that were going to book anyway. So the weekend tier is **alert-only** — it
-flags an open weekend that has fallen behind pace and a human decides.
+**The question I actually asked.** Does this need the system to *act*, or to *notice*? I checked
+whether weekends were failing to sell, and they weren't — they clear at the pricing engine's own
+rates. So automated discounting would have solved a problem I didn't have, and paid for it by
+giving away nights that were going to book anyway. The real gap was that when a weekend *did*
+lag, nobody found out until it was too late to respond.
 
-**Thresholds came from the data, not a guess.** For each property I pulled the distribution of
-weekend-night booking lead times and set `watch` at the median and `urgent` at the 25th
-percentile. The two properties came out materially different (one books meaningfully closer-in
-than the other), which a single shared threshold would have papered over.
+**What I shipped.** Alert-only. The system flags an open weekend that has fallen behind that
+property's pace; a human decides. It's the smaller, fully reversible intervention, and it's
+staged: gather evidence now, automate later only if the evidence justifies it. The build is
+structured so that later step is a drop-in, not a rewrite.
 
-**Why it matters.** The instinct was "extend the automation." The right answer was "extend the
-*observation*." Automating a decision you can't yet justify is how you lose money confidently.
+**One thing I refused to average.** The two properties book on visibly different curves, so a
+single shared threshold would have been wrong for both. Each property's alert thresholds come
+from its own booking-lead distribution — median for the soft flag, 25th percentile for the urgent
+one. Segment, don't average.
 
----
-
-## Decision 6 — Capture the counterfactual before it becomes unrecoverable
-
-**Context.** The system logged every night it priced. It did not log what the pricing engine
-*would* have charged on that night without the intervention. That number is queryable only while
-the night is in the future — once it passes, it's gone forever.
-
-**The trap I nearly walked into.** The API exposes a field whose name reads exactly like the
-counterfactual. I tested it against nights that had no override at all: it disagreed with the
-live price on **18 of 18**. It strips all custom rules, so it was never "what we would have
-charged" — it was "what a bare engine would have charged." The correct field turned out to be the
-plain recommended price, captured *before* the override is written.
-
-**Why it matters.** Field semantics were verified empirically rather than inferred from the name.
-Had I trusted the name, every discount-depth measurement built on top would have been quietly
-wrong — and unfixable after the fact, because the real value would have already expired.
+**The tradeoff I accepted.** More manual touches, in exchange for not automating a decision I
+couldn't yet defend. Automating something you can't justify is how you lose money confidently.
 
 ---
 
-## Decision 7 — Kill a comparison design I had just built
+## Decision 6 — Instrument before the measurement window closes
 
-**Context.** To know whether a discount *caused* a booking, you need comparable nights that didn't
-get one. I added a control group: nights outside the intervention window.
+**The problem.** The system recorded what it did, but not what *would* have happened otherwise.
+The pricing engine's own recommendation for a given night is only retrievable while that night is
+still in the future — once it passes, the number is gone permanently.
 
-**The flaw.** A night is only outside that window because it is further out in time. Checking the
-live log: treated nights sat at 6–14 days out, control nights at 18–60 — **zero overlap**.
-Treatment and lead time were the same variable. No comparison built on it could ever separate
-"the discount worked" from "close-in nights behave differently."
+**Why that's a prioritization call, not a technical one.** It means the cost of *not* building
+instrumentation isn't "we'll add it later" — it's "that evidence is destroyed daily until we do."
+I'd planned to let data accumulate for six weeks and then analyze it. Auditing what was actually
+being captured showed that plan would have ended with six weeks of data that couldn't answer the
+question. Everything else on the list could wait; this couldn't.
 
-**What I recommended.** Not the textbook fix. A randomized holdout would be methodologically
-correct, but at this portfolio's volume it yields roughly six treated vs six control nights per
-six-week window — underpowered to detect anything but a huge effect, while risking real revenue
-on every withheld night. Instead: probe the *price ceiling* among nights that all get treated,
-which varies price without leaving any night unprotected and has no lead-time confound.
+**The part worth flagging.** The API exposes a field whose name reads exactly like the number I
+wanted. I checked it against nights with no override applied, expecting it to match the live
+price. It disagreed on **18 of 18** — it strips all custom rules, so it answers a different
+question entirely. Had I trusted the name, every downstream measure would have been quietly wrong,
+and unfixable after the fact.
 
-**Why it matters.** The failure mode here isn't missing analysis — it's shipping a comparison
-that looks rigorous and isn't. Recognizing that a correct-on-paper experiment is the wrong
-instrument for the available sample is the actual judgment call.
+**The habit underneath.** Confirm what a metric actually measures before building decisions on
+top of it. A plausible field name is not a definition.
+
+---
+
+## Decision 7 — Killed a comparison I had just built, and picked a cheaper instrument
+
+**What I built.** To know whether a discount *caused* a booking, you need comparable nights that
+didn't get one. I added a control group: nights outside the intervention window.
+
+**Why I killed it.** A night is only outside that window because it's further out in time.
+Checking live data, treated nights sat at 6–14 days out and controls at 18–60 — no overlap at
+all. The comparison couldn't separate "the discount worked" from "close-in nights behave
+differently," and it never would have. Worse, it would have *looked* rigorous in a review.
+
+**The call I made instead.** The textbook fix is a randomized holdout — withhold the discount
+from a random share of eligible nights. Methodologically correct, and wrong here. At this
+portfolio's volume it produces roughly six treated and six control nights per six-week window:
+underpowered to detect anything but a very large effect, while spending real revenue on every
+withheld night to buy it. That's a bad trade, and no amount of statistical correctness fixes the
+price tag.
+
+The alternative costs nothing: vary *how far* prices move among nights that all get treated,
+rather than treating some and not others. No night goes unprotected, there's no lead-time
+confound, and it answers the more useful question anyway — not "does discounting work?" but
+"how high can I hold price and still clear?"
+
+**The judgment.** Match the instrument to the sample you actually have. Rigor has a cost, and
+choosing the method you can afford to run beats the one you can only afford to describe.
 
 ---
 

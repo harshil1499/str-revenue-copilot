@@ -134,14 +134,19 @@ check. The human moves up a level, not out.
 ## What this demonstrates (for anyone reviewing this as work sample)
 
 - Framing a fuzzy operational problem into a scoped, staged build
-- Deriving decision rules from data (lead-time distributions) instead of intuition
-- Knowing when to *remove* automation, not just add it
-- Separating signal from noise (a slow calendar that wasn't actually a problem)
+- Deriving decision rules from data (lead-time distributions) instead of intuition — and
+  segmenting rather than averaging when two units behave differently
+- **Deciding what not to build**: shipping an alert where automation was the obvious ask, because
+  the gap was visibility rather than action
+- **Sequencing by irreversibility**: prioritizing instrumentation whose measurement window was
+  closing daily over work that could safely wait
+- **Killing my own work** when the design couldn't answer the question it was built for — and
+  choosing the instrument that fit the available sample over the one that was correct on paper
+- Verifying what a metric actually measures before building decisions on top of it
 - Directing an AI agent to build and operate real infrastructure — spec, judgment, and QA from
   the human; implementation and execution from the agent
-- Designing for scale while being honest about where it doesn't yet reach — and mapping the
-  learning loop that closes the gap as data matures
-- Shipping something that runs itself
+- Designing for scale while being honest about where it doesn't yet reach
+- Shipping something that runs itself, with guardrails sized to the blast radius
 
 ## Repo contents
 - [`README.md`](README.md) — this case study
