@@ -7,6 +7,7 @@ private/
 .env
 .env.*
 *.env
+!.env.example
 
 # Working notes with property-identifying detail — kept local, not published.
 NOTES.md
