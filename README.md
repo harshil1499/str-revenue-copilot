@@ -11,6 +11,9 @@ how it was built, and what it changed.
 > personal/business financials are removed, and results are stated in relative terms. This is a
 > portfolio artifact, not the live production repo.
 
+<p align="center"><img src="docs/preview-demo.png" alt="Weekday Price Optimizer summary email, rendered from this repo's own render_email_html() against fabricated data" width="640"></p>
+<p align="center"><sub>The table and banner above are this repo's actual <code>render_email_html()</code> from <code>optimizer/weekday_price_optimizer.py</code>, run unmodified — only the nights, prices, and property labels are fabricated for this screenshot. The card header/footer chrome is illustrative styling layered on top for this README, not part of the shipped email.</sub></p>
+
 ---
 
 ## The problem
